@@ -11,6 +11,9 @@ fastapi = "^0.110.1"
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
 openai = "^1.19.0"
 azure-identity = "^1.16.0"
+sqlmodel = "^0.0.16"
+pyodbc = "^5.1.0"
+pydantic = "^2.7.0"
 
 
 [build-system]

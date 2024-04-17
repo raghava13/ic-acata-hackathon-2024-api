@@ -1,28 +1,25 @@
-from azure.identity import DefaultAzureCredential
-from fastapi import FastAPI
-from openai import AzureOpenAI
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, HTTPException, Path
+from sqlmodel import Session
+
+from app.database import Database
+from app.sql_database import SQLSession
 
 app = FastAPI()
 
-# credential = InteractiveBrowserCredential()
-credential = DefaultAzureCredential()
-token = credential.get_token("https://cognitiveservices.azure.com/.default")
+
+@app.get("/")
+def get_root():
+    return {"message": "IC ACATA HACKATHON 2024 API is running..."}
 
 
-client = AzureOpenAI(
-    api_key=token.token,
-    api_version="2023-05-15",
-    azure_endpoint="https://ic-ent-e2-cw-oai-dev.openai.azure.com/",
-)
+@app.get("/ocr/{document_id}")
+def get_ocr_by_document_id(
+    document_id: Annotated[int, Path(title="The Document ID", gt=0)],
+    session: Annotated[Session, Depends(SQLSession())],
+):
+    response = Database.get_ocr_by_document_id(session, document_id)
 
-conversation = [{"role": "system", "content": "You are a helpful assistant"}]
-
-
-@app.get("/{user_input}")
-def read_root(user_input: str):
-    conversation.append({"role": "user", "content": user_input})
-
-    response = client.chat.completions.create(
-        model="dev-gpt4-32k-cpl", messages=conversation
-    )
-    return response.choices[0].message.content
+    if not response:
+        raise HTTPException(status_code=404, detail="Not found")

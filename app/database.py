@@ -1,6 +1,10 @@
 from sqlmodel import Session, desc, or_, select
 
-from app.models.ocr import Ocr
+from app.models.database.nlp import NLP
+from app.models.database.nlp_document import NLPDocument
+from app.models.database.nlp_document_element import NLPDocumentElement
+from app.models.database.ocr import Ocr
+from app.models.request.nlp_request import NLPRequest
 
 
 class Database:
@@ -21,3 +25,45 @@ class Database:
             raise
 
         return response
+
+    @staticmethod
+    def insert_nlp(session: Session, request: NLPRequest):
+        nlp = NLP.model_validate(request)
+
+        session.add(nlp)
+
+        try:
+            session.commit()
+        except:
+            raise
+
+        return nlp.nlp_id
+
+    @staticmethod
+    def insert_nlp_document(
+        session: Session, nlp_id: int, document_id: int, response: str
+    ):
+        nlp_document = NLPDocument(
+            nlp_id=nlp_id, document_id=document_id, response=response
+        )
+
+        session.add(nlp_document)
+
+        try:
+            session.commit()
+        except:
+            raise
+
+        return nlp_document.nlp_document_id
+
+    @staticmethod
+    def insert_nlp_document_element(
+        session: Session, nlp_document_element_list: list[NLPDocumentElement]
+    ):
+        for nlp_document_element in nlp_document_element_list:
+            session.add(nlp_document_element)
+
+        try:
+            session.commit()
+        except:
+            raise

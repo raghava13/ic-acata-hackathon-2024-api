@@ -14,7 +14,7 @@ from sqlmodel import (
 )
 
 from app.models.base.camel_sql_model import CamelSQLModel
-from app.models.document import Document
+from app.models.database.document import Document
 
 
 class Ocr(CamelSQLModel, table=True):

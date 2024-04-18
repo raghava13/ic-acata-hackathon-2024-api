@@ -1,6 +1,7 @@
 from sqlmodel import Session, desc, or_, select
 
 from app.models.database.nlp import NLP
+from app.models.database.nlp_accuracy import NLPAccuracy
 from app.models.database.nlp_document import NLPDocument
 from app.models.database.nlp_document_element import NLPDocumentElement
 from app.models.database.ocr import Ocr
@@ -25,6 +26,39 @@ class Database:
             raise
 
         return response
+
+    @staticmethod
+    def get_nlp_result_by_nlp_id(session: Session, nlp_id: int):
+        query = select(NLPDocument).where(NLPDocument.nlp_id == nlp_id)
+        response = None
+        try:
+            response = session.exec(query).all()
+        except:
+            raise
+
+        return response
+
+    @staticmethod
+    def get_nlp_accuracy_by_nlp_id(session: Session, nlp_id: int):
+        query = select(NLPAccuracy).where(NLPAccuracy.nlp_id == nlp_id)
+        response = None
+        try:
+            response = session.exec(query).all()
+        except:
+            raise
+
+        return response
+
+    # @staticmethod
+    # def get_ground_truth_by_document_ids(session: Session, document_list: list[int]):
+    #     query = select(GroundTruth).where(GroundTruth.document_id.in_([1, 2, 3]))
+    #     response = None
+    #     try:
+    #         response = session.exec(query).first()
+    #     except:
+    #         raise
+
+    #     return response
 
     @staticmethod
     def insert_nlp(session: Session, request: NLPRequest):
@@ -62,6 +96,16 @@ class Database:
     ):
         for nlp_document_element in nlp_document_element_list:
             session.add(nlp_document_element)
+
+        try:
+            session.commit()
+        except:
+            raise
+
+    @staticmethod
+    def insert_nlp_accuracy(session: Session, nlp_accuracy_list: list[NLPAccuracy]):
+        for nlp_accuracy in nlp_accuracy_list:
+            session.add(nlp_accuracy)
 
         try:
             session.commit()

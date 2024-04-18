@@ -27,12 +27,38 @@ def get_root():
     return {"message": "IC ACATA HACKATHON 2024 API is running..."}
 
 
-@app.get("/ocr/{document_id}", response_model=str)
-def get_ocr_by_document_id(
-    document_id: Annotated[int, Path(title="The Document ID", gt=0)],
+# @app.get("/ocr/{document_id}", response_model=str)
+# def get_ocr_by_document_id(
+#     document_id: Annotated[int, Path(title="The Document ID", gt=0)],
+#     session: Annotated[Session, Depends(SQLSession())],
+# ):
+#     response = Database.get_ocr_by_document_id(session, document_id)
+
+#     if not response:
+#         raise HTTPException(status_code=404, detail="Not found")
+
+#     return response
+
+
+@app.get("/nlp/response/{nlp_id}", response_model=str)
+def get_nlp_result_by_nlp_id(
+    document_id: Annotated[int, Path(title="The NLP ID", gt=0)],
     session: Annotated[Session, Depends(SQLSession())],
 ):
-    response = Database.get_ocr_by_document_id(session, document_id)
+    response = Database.get_nlp_result_by_nlp_id(session, document_id)
+
+    if not response:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return response
+
+
+@app.get("/nlp/accuracy/{nlp_id}", response_model=str)
+def get_nlp_accuracy_by_nlp_id(
+    document_id: Annotated[int, Path(title="The NLP ID", gt=0)],
+    session: Annotated[Session, Depends(SQLSession())],
+):
+    response = Database.get_nlp_accuracy_by_nlp_id(session, document_id)
 
     if not response:
         raise HTTPException(status_code=404, detail="Not found")

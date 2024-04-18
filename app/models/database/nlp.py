@@ -32,3 +32,7 @@ class NLP(CamelSQLModel, table=True):
     nlp_documents: list["NLPDocument"] = Relationship(  # noqa: F821 # type: ignore
         back_populates="nlp"
     )
+
+    nlp_accuracies: list["NLPAccuracy"] = Relationship(  # noqa: F821 # type: ignore
+        back_populates="nlp"
+    )

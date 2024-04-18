@@ -38,7 +38,7 @@ class AzureOpenAIService:
             frequency_penalty=request.frequency_penalty,
             max_tokens=request.max_tokens,
             presence_penalty=request.presence_penalty,
-            response_format={"type": "json_object"},
+            # response_format={"type": "json_object"},
             stop=request.stop,
             temperature=request.temperature,
             top_p=request.top_p,

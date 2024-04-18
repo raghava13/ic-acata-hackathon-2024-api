@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Path
 from sqlmodel import Session
+from starlette.middleware.cors import CORSMiddleware
 
 from app.azure_open_ai import AzureOpenAIService
 from app.database import Database
@@ -11,6 +12,14 @@ from app.models.request.nlp_request import NLPRequest
 from app.sql_database import SQLSession
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],
+    allow_credentials=True,
+    allow_methods=("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
@@ -49,22 +58,26 @@ def run_azure_open_ai(
 
         response = AzureOpenAIService.run_azure_open_ai(request, ocr_text)
 
-        if response:
-            nlp_document_id = Database.insert_nlp_document(
-                session, nlp_id, document_id, response
+        if not response or response == '["None"]':
+            continue
+
+        nlp_document_id = Database.insert_nlp_document(
+            session, nlp_id, document_id, response
+        )
+        if not nlp_document_id:
+            continue
+
+        response = json.loads(response)
+        nlp_document_element_list = []
+        for key, value in response.items():
+            nlp_document_element = NLPDocumentElement(
+                nlp_document_id=nlp_document_id,
+                element_name=key,
+                raw_value=value,
             )
-            if not nlp_document_id:
-                continue
+            nlp_document_element_list.append(nlp_document_element)
 
-            response = json.loads(response)
-            nlp_document_element_list = []
-            for key, value in response.items():
-                nlp_document_element = NLPDocumentElement(
-                    nlp_document_id=nlp_document_id,
-                    element_name=key,
-                    raw_value=value,
-                )
-                nlp_document_element_list.append(nlp_document_element)
+        if len(nlp_document_element_list) > 0:
+            Database.insert_nlp_document_element(session, nlp_document_element_list)
 
-            if len(nlp_document_element_list) > 0:
-                Database.insert_nlp_document_element(session, nlp_document_element_list)
+    return "Success"

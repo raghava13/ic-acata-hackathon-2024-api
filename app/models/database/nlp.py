@@ -10,7 +10,9 @@ class NLP(CamelSQLModel, table=True):
     __tablename__ = "NLP"  # type: ignore
     __table_args__ = {"schema": "HACKATHON"}
 
-    nlp_id: Optional[int] = Field(sa_column=Column("NLPId", Integer, primary_key=True))
+    nlp_id: Optional[int] = Field(
+        default=None, sa_column=Column("NLPId", Integer, primary_key=True)
+    )
     template: str = Field(sa_column=Column("Template", String))
     knowledge: str = Field(sa_column=Column("Knowledge", String))
     user_content: str = Field(sa_column=Column("UserContent", String))

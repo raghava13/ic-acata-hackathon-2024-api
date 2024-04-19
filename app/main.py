@@ -1,14 +1,19 @@
 import json
-from typing import Annotated
+from typing import Annotated, Sequence
 
 from fastapi import Depends, FastAPI, HTTPException, Path
+from langchain_core.prompts import PromptTemplate
 from sqlmodel import Session
 from starlette.middleware.cors import CORSMiddleware
 
 from app.azure_open_ai import AzureOpenAIService
 from app.database import Database
+from app.models.database.document import Document
+from app.models.database.nlp_accuracy import NLPAccuracy
+from app.models.database.nlp_document import NLPDocument
 from app.models.database.nlp_document_element import NLPDocumentElement
 from app.models.request.nlp_request import NLPRequest
+from app.models.request.prompt_request import PromptRequest
 from app.sql_database import SQLSession
 
 app = FastAPI()
@@ -40,12 +45,12 @@ def get_root():
 #     return response
 
 
-@app.get("/nlp/response/{nlp_id}", response_model=str)
+@app.get("/nlp/result/{nlp_id}", response_model=Sequence[NLPDocument])
 def get_nlp_result_by_nlp_id(
-    document_id: Annotated[int, Path(title="The NLP ID", gt=0)],
+    nlp_id: Annotated[int, Path(title="The NLP ID", gt=0)],
     session: Annotated[Session, Depends(SQLSession())],
 ):
-    response = Database.get_nlp_result_by_nlp_id(session, document_id)
+    response = Database.get_nlp_result_by_nlp_id(session, nlp_id)
 
     if not response:
         raise HTTPException(status_code=404, detail="Not found")
@@ -53,12 +58,12 @@ def get_nlp_result_by_nlp_id(
     return response
 
 
-@app.get("/nlp/accuracy/{nlp_id}", response_model=str)
+@app.get("/nlp/accuracy/{nlp_id}", response_model=Sequence[NLPAccuracy])
 def get_nlp_accuracy_by_nlp_id(
-    document_id: Annotated[int, Path(title="The NLP ID", gt=0)],
+    nlp_id: Annotated[int, Path(title="The NLP ID", gt=0)],
     session: Annotated[Session, Depends(SQLSession())],
 ):
-    response = Database.get_nlp_accuracy_by_nlp_id(session, document_id)
+    response = Database.get_nlp_accuracy_by_nlp_id(session, nlp_id)
 
     if not response:
         raise HTTPException(status_code=404, detail="Not found")
@@ -66,11 +71,53 @@ def get_nlp_accuracy_by_nlp_id(
     return response
 
 
-@app.post("/nlp", response_model=str)
+@app.get("/nlp/latest/accuracy", response_model=Sequence[NLPAccuracy])
+def get_latest_element_accuracy(
+    session: Annotated[Session, Depends(SQLSession())],
+):
+    response = Database.get_latest_element_accuracy(session)
+
+    if not response:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return response
+
+
+@app.get("/nlp/latest/accuracy/{element_name}", response_model=Sequence[NLPAccuracy])
+def get_latest_accuracy_by_element(
+    element_name: Annotated[str, Path(title="The Element Name")],
+    session: Annotated[Session, Depends(SQLSession())],
+):
+    response = Database.get_latest_accuracy_by_element(session, element_name)
+
+    if not response:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return response
+
+
+@app.get("/document", response_model=Sequence[Document])
+def get_documents(
+    session: Annotated[Session, Depends(SQLSession())],
+):
+    response = Database.get_documents(session)
+
+    if not response:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return response
+
+
+@app.post("/nlp/process", response_model=int)
 def run_azure_open_ai(
     request: NLPRequest,
     session: Annotated[Session, Depends(SQLSession())],
 ):
+    prompt_template = PromptTemplate(
+        input_variables=["knowledge", "context"],
+        template=request.template,
+    )
+
     nlp_id = Database.insert_nlp(session, request)
 
     if not nlp_id:
@@ -82,7 +129,20 @@ def run_azure_open_ai(
         if not ocr_text:
             continue
 
-        response = AzureOpenAIService.run_azure_open_ai(request, ocr_text)
+        system_content = prompt_template.format(
+            knowledge=request.knowledge, context=ocr_text
+        )
+
+        response = AzureOpenAIService.run_azure_open_ai(
+            system_content,
+            request.user_content,
+            request.frequency_penalty,
+            request.presence_penalty,
+            request.temperature,
+            request.top_p,
+            request.max_tokens,
+            request.stop,
+        )
 
         if not response or response == '["None"]':
             continue
@@ -94,7 +154,7 @@ def run_azure_open_ai(
             continue
 
         response = json.loads(response)
-        nlp_document_element_list = []
+        nlp_document_element_list: list[NLPDocumentElement] = []
         for key, value in response.items():
             nlp_document_element = NLPDocumentElement(
                 nlp_document_id=nlp_document_id,
@@ -106,4 +166,27 @@ def run_azure_open_ai(
         if len(nlp_document_element_list) > 0:
             Database.insert_nlp_document_element(session, nlp_document_element_list)
 
-    return "Success"
+    return nlp_id
+
+
+@app.post("/nlp/prompt-tuning", response_model=str)
+def run_azure_open_ai_prompt(request: PromptRequest):
+    prompt_template = PromptTemplate(
+        input_variables=["knowledge", "context"],
+        template=request.template,
+    )
+
+    system_content = prompt_template.format(
+        knowledge=request.knowledge, context=request.context
+    )
+
+    return AzureOpenAIService.run_azure_open_ai(
+        system_content,
+        request.user_content,
+        request.frequency_penalty,
+        request.presence_penalty,
+        request.temperature,
+        request.top_p,
+        request.max_tokens,
+        request.stop,
+    )

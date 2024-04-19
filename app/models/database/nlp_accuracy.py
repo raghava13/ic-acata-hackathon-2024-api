@@ -28,7 +28,7 @@ class NLPAccuracy(CamelSQLModel, table=True):
         sa_column=Column("NLPId", Integer, ForeignKey("HACKATHON.NLP.NLPId"))
     )
     element_name: str = Field(sa_column=Column("ElementName", String))
-    accuracy: float = Field(sa_column=Column("Response", Float))
+    accuracy: float = Field(sa_column=Column("Accuracy", Float))
     document_count: int = Field(sa_column=Column("DocumentCount", String))
     created_date: Optional[datetime] = Field(
         default=datetime.now(timezone.utc), sa_column=Column("CreatedDate", DateTime)

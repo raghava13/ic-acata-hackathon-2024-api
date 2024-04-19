@@ -5,7 +5,6 @@ from sqlmodel import (
     Column,
     DateTime,
     Field,
-    Float,
     ForeignKey,
     Integer,
     Relationship,
@@ -30,11 +29,7 @@ class NLPDocumentElement(CamelSQLModel, table=True):
         )
     )
     element_name: str = Field(sa_column=Column("ElementName", String))
-    ground_truth: Optional[str] = Field(
-        default="", sa_column=Column("GroundTruth", String)
-    )
     raw_value: str = Field(sa_column=Column("RawValue", String))
-    accuracy: Optional[float] = Field(default=0, sa_column=Column("Accuracy", Float))
     created_date: Optional[datetime] = Field(
         default=datetime.now(timezone.utc), sa_column=Column("CreatedDate", DateTime)
     )

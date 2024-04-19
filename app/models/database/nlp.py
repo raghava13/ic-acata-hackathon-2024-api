@@ -13,6 +13,7 @@ class NLP(CamelSQLModel, table=True):
     nlp_id: Optional[int] = Field(
         default=None, sa_column=Column("NLPId", Integer, primary_key=True)
     )
+    name: str = Field(sa_column=Column("Name", String))
     template: str = Field(sa_column=Column("Template", String))
     knowledge: str = Field(sa_column=Column("Knowledge", String))
     user_content: str = Field(sa_column=Column("UserContent", String))

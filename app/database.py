@@ -1,5 +1,6 @@
-from sqlmodel import Session, desc, or_, select
+from sqlmodel import Session, col, desc, or_, select, text
 
+from app.models.database.document import Document
 from app.models.database.nlp import NLP
 from app.models.database.nlp_accuracy import NLPAccuracy
 from app.models.database.nlp_document import NLPDocument
@@ -41,6 +42,59 @@ class Database:
     @staticmethod
     def get_nlp_accuracy_by_nlp_id(session: Session, nlp_id: int):
         query = select(NLPAccuracy).where(NLPAccuracy.nlp_id == nlp_id)
+        response = None
+        try:
+            response = session.exec(query).all()
+        except:
+            raise
+
+        return response
+
+    @staticmethod
+    def get_latest_element_accuracy(session: Session):
+        query = (
+            select(NLPAccuracy)
+            .where(
+                col(NLPAccuracy.nlp_accuracy_id).in_(
+                    text(
+                        "SELECT MAX(NLPAccuracyId) FROM HACKATHON.NLPAccuracy GROUP BY ElementName"
+                    )
+                )
+            )
+            .limit(25)
+        )
+
+        response = None
+        try:
+            response = session.exec(query).all()
+        except:
+            raise
+
+        return response
+
+    @staticmethod
+    def get_latest_accuracy_by_element(session: Session, element_name: str):
+        query = (
+            select(NLPAccuracy)
+            .where(NLPAccuracy.element_name == element_name)
+            .limit(25)
+            .order_by(desc(NLPAccuracy.nlp_accuracy_id))
+        )
+        response = None
+        try:
+            response = session.exec(query).all()
+        except:
+            raise
+
+        return response
+
+    @staticmethod
+    def get_documents(session: Session):
+        query = select(Document).where(
+            col(Document.document_id).in_(
+                text("SELECT DISTINCT DocumentId FROM CURATION_WB.GroundTruth")
+            )
+        )
         response = None
         try:
             response = session.exec(query).all()
@@ -102,12 +156,33 @@ class Database:
         except:
             raise
 
-    @staticmethod
-    def insert_nlp_accuracy(session: Session, nlp_accuracy_list: list[NLPAccuracy]):
-        for nlp_accuracy in nlp_accuracy_list:
-            session.add(nlp_accuracy)
+    # @staticmethod
+    # def insert_nlp_accuracy(session: Session, documentList: list[int]):
+    #     query = (
+    #         select(GroundTruth)  # type: ignore
+    #         .join(
+    #             NLPDocumentElement,
+    #             NLPDocumentElement.element_name == GroundTruth.element_name
+    #             and NLPDocumentElement.raw_value == GroundTruth.ground_truth,  # type: ignore
+    #         )
+    #         .join(
+    #             NLPDocument,
+    #             NLPDocument.document_id == GroundTruth.document_id
+    #             and NLPDocument.nlp_document_id == NLPDocumentElement.nlp_document_id,  # type: ignore
+    #         )
+    #         .where(col(GroundTruth.document_id).in_(documentList))
+    #     )
 
-        try:
-            session.commit()
-        except:
-            raise
+    #     response = None
+    #     try:
+    #         response = session.exec(query).all()
+    #     except:
+    #         raise
+
+    #     for nlp_accuracy in nlp_document_element_list:
+    #         session.add(nlp_accuracy)
+
+    #     try:
+    #         session.commit()
+    #     except:
+    #         raise

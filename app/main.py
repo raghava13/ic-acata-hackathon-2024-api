@@ -1,7 +1,7 @@
 import json
 from typing import Annotated, Sequence
 
-from fastapi import Depends, FastAPI, HTTPException, Path
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Path
 from langchain_core.prompts import PromptTemplate
 from sqlmodel import Session
 from starlette.middleware.cors import CORSMiddleware
@@ -112,17 +112,46 @@ def get_documents(
 def run_azure_open_ai(
     request: NLPRequest,
     session: Annotated[Session, Depends(SQLSession())],
+    background_tasks: BackgroundTasks,
 ):
-    prompt_template = PromptTemplate(
-        input_variables=["knowledge", "context"],
-        template=request.template,
-    )
-
     nlp_id = Database.insert_nlp(session, request)
 
     if not nlp_id:
         return
 
+    background_tasks.add_task(nlp_background_process, session, request, nlp_id)
+
+    return nlp_id
+
+
+@app.post("/nlp/prompt-tuning", response_model=str)
+def run_azure_open_ai_prompt(request: PromptRequest):
+    prompt_template = PromptTemplate(
+        input_variables=["knowledge", "context"],
+        template=request.template,
+    )
+
+    system_content = prompt_template.format(
+        knowledge=request.knowledge, context=request.context
+    )
+
+    return AzureOpenAIService.run_azure_open_ai(
+        system_content,
+        request.user_content,
+        request.frequency_penalty,
+        request.presence_penalty,
+        request.temperature,
+        request.top_p,
+        request.max_tokens,
+        request.stop,
+    )
+
+
+def nlp_background_process(session: Session, request: NLPRequest, nlp_id: int):
+    prompt_template = PromptTemplate(
+        input_variables=["knowledge", "context"],
+        template=request.template,
+    )
     for document_id in request.document_list:
         ocr_text = Database.get_ocr_by_document_id(session, document_id)
 
@@ -165,28 +194,3 @@ def run_azure_open_ai(
 
         if len(nlp_document_element_list) > 0:
             Database.insert_nlp_document_element(session, nlp_document_element_list)
-
-    return nlp_id
-
-
-@app.post("/nlp/prompt-tuning", response_model=str)
-def run_azure_open_ai_prompt(request: PromptRequest):
-    prompt_template = PromptTemplate(
-        input_variables=["knowledge", "context"],
-        template=request.template,
-    )
-
-    system_content = prompt_template.format(
-        knowledge=request.knowledge, context=request.context
-    )
-
-    return AzureOpenAIService.run_azure_open_ai(
-        system_content,
-        request.user_content,
-        request.frequency_penalty,
-        request.presence_penalty,
-        request.temperature,
-        request.top_p,
-        request.max_tokens,
-        request.stop,
-    )

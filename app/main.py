@@ -14,6 +14,7 @@ from app.models.database.nlp_document import NLPDocument
 from app.models.database.nlp_document_element import NLPDocumentElement
 from app.models.request.nlp_request import NLPRequest
 from app.models.request.prompt_request import PromptRequest
+from app.models.response.nlp_element_response import NLPElementResponse
 from app.sql_database import SQLSession
 
 app = FastAPI()
@@ -51,6 +52,19 @@ def get_nlp_result_by_nlp_id(
     session: Annotated[Session, Depends(SQLSession())],
 ):
     response = Database.get_nlp_result_by_nlp_id(session, nlp_id)
+
+    if not response:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return response
+
+
+@app.get("/nlp/element/{nlp_id}", response_model=Sequence[NLPElementResponse])
+def get_nlp_element_by_nlp_id(
+    nlp_id: Annotated[int, Path(title="The NLP ID", gt=0)],
+    session: Annotated[Session, Depends(SQLSession())],
+):
+    response = Database.get_nlp_element_by_nlp_id(session, nlp_id)
 
     if not response:
         raise HTTPException(status_code=404, detail="Not found")
@@ -185,6 +199,9 @@ def nlp_background_process(session: Session, request: NLPRequest, nlp_id: int):
         response = json.loads(response)
         nlp_document_element_list: list[NLPDocumentElement] = []
         for key, value in response.items():
+            if isinstance(value, list):
+                value = value[0]
+
             nlp_document_element = NLPDocumentElement(
                 nlp_document_id=nlp_document_id,
                 element_name=key,
@@ -194,3 +211,21 @@ def nlp_background_process(session: Session, request: NLPRequest, nlp_id: int):
 
         if len(nlp_document_element_list) > 0:
             Database.insert_nlp_document_element(session, nlp_document_element_list)
+
+    ground_truth_list = Database.get_ground_truth_by_nlp_id(session, nlp_id)
+    Database.insert_nlp_accuracy(
+        session, nlp_id, len(request.document_list), ground_truth_list
+    )
+
+
+# @app.get("/nlp/accuracy2/{nlp_id}", response_model=Sequence[GroundTruthResponse])
+# def get_nlp_accuracy_by_nlp_id2(
+#     nlp_id: Annotated[int, Path(title="The NLP ID", gt=0)],
+#     session: Annotated[Session, Depends(SQLSession())],
+# ):
+#     response = Database.get_ground_truth_by_nlp_id(session, nlp_id)
+
+#     if not response:
+#         raise HTTPException(status_code=404, detail="Not found")
+
+#     return response

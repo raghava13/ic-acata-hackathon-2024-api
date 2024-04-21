@@ -9,7 +9,6 @@ from sqlmodel import Session, create_engine
 
 SQL_COPT_SS_ACCESS_TOKEN = 1256  # As defined in msodbcsql.h
 
-default_azure_credential = DefaultAzureCredential()
 
 sql_engine: Engine | None = None
 
@@ -42,6 +41,8 @@ def create_sql_engine():
     )
 
     sql_engine = create_engine(connection_url)
+
+    default_azure_credential = DefaultAzureCredential()
 
     inject_azure_credential(default_azure_credential, sql_engine)
 

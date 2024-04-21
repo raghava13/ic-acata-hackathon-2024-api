@@ -219,12 +219,15 @@ class Database:
             element_name: str = gt["element_name"]
             ground_truth = gt["ground_truth"]
             raw_value = gt["raw_value"]
-            if element_name.endswith("date"):
-                ground_truth = str(datetime.strptime(ground_truth, "%m/%d/%Y").date())
-                raw_value = str(datetime.strptime(raw_value, "%m/%d/%Y").date())
 
-            print("ground_truth", ground_truth)
-            print("raw_value", raw_value)
+            if element_name.endswith("date"):
+                try:
+                    ground_truth = str(
+                        datetime.strptime(ground_truth, "%m/%d/%Y").date()
+                    )
+                    raw_value = str(datetime.strptime(raw_value, "%m/%d/%Y").date())
+                except:
+                    pass
 
             if ground_truth.lower() == raw_value.lower():
                 if element_name in accuracy_list:

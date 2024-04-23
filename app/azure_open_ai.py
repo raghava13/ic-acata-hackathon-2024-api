@@ -39,5 +39,6 @@ class AzureOpenAIService:
             stop=stop,
             temperature=temperature,
             top_p=top_p,
+            seed=100,
         )
         return response.choices[0].message.content

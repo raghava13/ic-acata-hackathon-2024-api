@@ -242,7 +242,7 @@ class Database:
             nlp_accuracy = NLPAccuracy(
                 nlp_id=nlp_id,
                 element_name=key,
-                accuracy=100 * value / document_count,
+                accuracy=round(100 * value / document_count, 2),
                 document_count=document_count,
             )
             session.add(nlp_accuracy)
